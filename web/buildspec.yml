@@ -13,8 +13,9 @@ phases:
   install:
     commands:
       - echo "Installing Docker"
-      - curl -fsSL https://get.docker.com -o get-docker.sh
-      - sudo sh get-docker.sh
+      - sudo yum update -y
+      - sudo yum install -y docker
+      - sudo service docker start
       - sudo usermod -aG docker $USER
       - echo "Installing Trivy"
       - curl -sSL https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz | tar -xz -C /usr/local/bin
