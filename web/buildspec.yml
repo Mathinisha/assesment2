@@ -21,7 +21,7 @@ phases:
   pre_build:
     commands:
       - echo "Logging into Amazon ECR"
-      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
+      - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 905418153772.dkr.ecr.ap-south-1.amazonaws.com
 
       - echo "Setting up environment variables for SonarQube"
       - export SONAR_SCANNER_HOME=/opt/sonar-scanner/sonar-scanner-4.6.2.2472-linux
