@@ -7,15 +7,20 @@ env:
     ECR_REPOSITORY_URI: "905418153772.dkr.ecr.ap-south-1.amazonaws.com/testweb"
     AWS_REGION: "ap-south-1"
     TRIVY_VERSION: "0.22.0"
+    SONAR_SCANNER_VERSION: "4.6.2.2472"
 
 phases:
   install:
     commands:
+      - echo "Installing Docker"
+      - curl -fsSL https://get.docker.com -o get-docker.sh
+      - sudo sh get-docker.sh
+      - sudo usermod -aG docker $USER
       - echo "Installing Trivy"
       - curl -sSL https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz | tar -xz -C /usr/local/bin
 
       - echo "Installing Sonar Scanner"
-      - curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.6.2.2472-linux.zip
+      - curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}-linux.zip
       - unzip sonar-scanner.zip -d /opt/sonar-scanner
 
   pre_build:
@@ -24,7 +29,7 @@ phases:
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
 
       - echo "Setting up environment variables for SonarQube"
-      - export SONAR_SCANNER_HOME=/opt/sonar-scanner/sonar-scanner-4.6.2.2472-linux
+      - export SONAR_SCANNER_HOME=/opt/sonar-scanner/sonar-scanner-${SONAR_SCANNER_VERSION}-linux
       - export PATH=$PATH:$SONAR_SCANNER_HOME/bin
 
   build:
