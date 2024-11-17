@@ -11,44 +11,44 @@ env:
 phases:
   install:
     commands:
-      echo "Installing Trivy"
-      curl -sSL https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz | tar -xz -C /usr/local/bin
+      - echo "Installing Trivy"
+      - curl -sSL https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz | tar -xz -C /usr/local/bin
 
-      echo "Installing Sonar Scanner"
-      curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.6.2.2472-linux.zip
-      unzip sonar-scanner.zip -d /opt/sonar-scanner
+      - echo "Installing Sonar Scanner"
+      - curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.6.2.2472-linux.zip
+      - unzip sonar-scanner.zip -d /opt/sonar-scanner
 
   pre_build:
     commands:
-      echo "Logging into Amazon ECR"
-      aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
+      - echo "Logging into Amazon ECR"
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
 
-      echo "Setting up environment variables for SonarQube"
-      export SONAR_SCANNER_HOME=/opt/sonar-scanner/sonar-scanner-4.6.2.2472-linux
-      export PATH=$PATH:$SONAR_SCANNER_HOME/bin
+      - echo "Setting up environment variables for SonarQube"
+      - export SONAR_SCANNER_HOME=/opt/sonar-scanner/sonar-scanner-4.6.2.2472-linux
+      - export PATH=$PATH:$SONAR_SCANNER_HOME/bin
 
   build:
     commands:
-      echo "Running SonarQube Scan"
-      $SONAR_SCANNER_HOME/bin/sonar-scanner \
+      - echo "Running SonarQube Scan"
+      - $SONAR_SCANNER_HOME/bin/sonar-scanner \
         -Dsonar.projectKey=your-project-key \
         -Dsonar.sources=. \
         -Dsonar.host.url=$SONAR_HOST_URL \
         -Dsonar.login=$SONAR_TOKEN
 
-      echo "Building Docker image"
-      docker build -t $ECR_REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION .
+      - echo "Building Docker image"
+      - docker build -t $ECR_REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION .
 
-      echo "Listing Docker images"
-      docker images  # Debugging to ensure image is built
+      - echo "Listing Docker images"
+      - docker images
 
-      echo "Pushing Docker image to ECR"
-      docker push $ECR_REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - echo "Pushing Docker image to ECR"
+      - docker push $ECR_REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION
 
   post_build:
     commands:
-      echo "Running Trivy security scan"
-      trivy image --format json --output trivy-report.json $ECR_REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - echo "Running Trivy security scan"
+      - trivy image --format json --output trivy-report.json $ECR_REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION
 
-      echo "Uploading Trivy scan report to S3"
-      aws s3 cp trivy-report.json s3://test-trivy-reports/trivy-reports/${CODEBUILD_RESOLVED_SOURCE_VERSION}/trivy-report.json
+      - echo "Uploading Trivy scan report to S3"
+      - aws s3 cp trivy-report.json s3://test-trivy-reports/trivy-reports/${CODEBUILD_RESOLVED_SOURCE_VERSION}/trivy-report.json
