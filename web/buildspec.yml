@@ -2,10 +2,10 @@ version: 0.2
 
 env:
   variables:
-    SONAR_HOST_URL: "http://54.160.16.113:9000/"  # Your SonarQube URL
-    SONAR_TOKEN: "squ_2a1acbdc7256116ab1f89e4e8339f7c8f0c78efb"  # Replace with your SonarQube token
-    ECR_REPOSITORY_URI: "905418153772.dkr.ecr.ap-south-1.amazonaws.com/testweb"  # Replace with your ECR URI
-    AWS_REGION: "ap-south-1"  # Replace with your AWS region
+    SONAR_HOST_URL: "http://54.160.16.113:9000/"
+    SONAR_TOKEN: "squ_2a1acbdc7256116ab1f89e4e8339f7c8f0c78efb"
+    ECR_REPOSITORY_URI: "905418153772.dkr.ecr.ap-south-1.amazonaws.com/testweb"
+    AWS_REGION: "ap-south-1"
     TRIVY_VERSION: "0.22.0"
 
 phases:
@@ -23,7 +23,7 @@ phases:
       echo "Logging into Amazon ECR"
       aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
 
-      echo "Setting up environment variables for SonarQube, EKS, and ECR"
+      echo "Setting up environment variables for SonarQube"
       export SONAR_SCANNER_HOME=/opt/sonar-scanner/sonar-scanner-4.6.2.2472-linux
       export PATH=$PATH:$SONAR_SCANNER_HOME/bin
 
@@ -39,13 +39,16 @@ phases:
       echo "Building Docker image"
       docker build -t $ECR_REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION .
 
+      echo "Listing Docker images"
+      docker images  # Debugging to ensure image is built
+
       echo "Pushing Docker image to ECR"
       docker push $ECR_REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION
 
+  post_build:
+    commands:
       echo "Running Trivy security scan"
       trivy image --format json --output trivy-report.json $ECR_REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION
 
-  post_build:
-    commands:
       echo "Uploading Trivy scan report to S3"
       aws s3 cp trivy-report.json s3://test-trivy-reports/trivy-reports/${CODEBUILD_RESOLVED_SOURCE_VERSION}/trivy-report.json
