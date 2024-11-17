@@ -46,7 +46,8 @@ phases:
 
       # Build Docker image from the Dockerfile in the 'web' directory
       - echo "Building Docker image"
-      - docker build -t testweb -f web/Dockerfile .
+      - docker build -t testweb -f web/Dockerfile web/
+
 
       # Tag Docker image for ECR
       - echo "Tagging Docker image"
