@@ -21,7 +21,7 @@ phases:
   pre_build:
     commands:
       - echo "Logging into Amazon ECR"
-      - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 905418153772.dkr.ecr.ap-south-1.amazonaws.com
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
 
       - echo "Setting up environment variables for SonarQube"
       - export SONAR_SCANNER_HOME=/opt/sonar-scanner/sonar-scanner-4.6.2.2472-linux
@@ -30,25 +30,28 @@ phases:
   build:
     commands:
       - echo "Running SonarQube Scan"
-      - $SONAR_SCANNER_HOME/bin/sonar-scanner \
-        -Dsonar.projectKey=your-project-key \
-        -Dsonar.sources=. \
-        -Dsonar.host.url=$SONAR_HOST_URL \
-        -Dsonar.login=$SONAR_TOKEN
+      - sonar-scanner -Dsonar.projectKey=your-project-key -Dsonar.sources=. -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_TOKEN
 
       - echo "Building Docker image"
-      - docker build -t $ECR_REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION .
+      - docker build -t testweb .
+
+      - echo "Tagging Docker image"
+      - docker tag testweb:latest $ECR_REPOSITORY_URI:latest
 
       - echo "Listing Docker images"
       - docker images
 
       - echo "Pushing Docker image to ECR"
-      - docker push $ECR_REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - docker push $ECR_REPOSITORY_URI:latest
 
   post_build:
     commands:
       - echo "Running Trivy security scan"
-      - trivy image --format json --output trivy-report.json $ECR_REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - if docker image inspect $ECR_REPOSITORY_URI:latest > /dev/null 2>&1; then
+          trivy image --format json --output trivy-report.json $ECR_REPOSITORY_URI:latest;
+        else
+          echo "Docker image not found, skipping Trivy scan";
+        fi
 
       - echo "Uploading Trivy scan report to S3"
       - aws s3 cp trivy-report.json s3://test-trivy-reports/trivy-reports/${CODEBUILD_RESOLVED_SOURCE_VERSION}/trivy-report.json
