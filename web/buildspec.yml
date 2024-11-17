@@ -11,16 +11,20 @@ env:
 
 phases:
   install:
+    runtime-versions:
+      docker: 18  # Specify the Docker version you want
     commands:
-      - echo "Installing Docker"
-      - sudo yum update -y
-      - sudo yum install -y docker
-      - sudo systemctl start docker
-      - sudo systemctl enable docker
+      # Start Docker daemon in the background
+      - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2 &
 
+      # Wait until Docker is ready
+      - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
+
+      # Install Trivy
       - echo "Installing Trivy"
       - curl -sSL https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz | tar -xz -C /usr/local/bin
 
+      # Install Sonar Scanner
       - echo "Installing Sonar Scanner"
       - curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}-linux.zip
       - unzip sonar-scanner.zip -d /opt/sonar-scanner
@@ -62,3 +66,4 @@ phases:
 
       - echo "Uploading Trivy scan report to S3"
       - aws s3 cp trivy-report.json s3://test-trivy-reports/trivy-reports/${CODEBUILD_RESOLVED_SOURCE_VERSION}/trivy-report.json
+
